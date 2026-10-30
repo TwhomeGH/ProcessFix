@@ -1,0 +1,26 @@
+[tool.changelog]
+title = "ProcessFix 開發歷史"
+history = "Docs/ChangeHistory.md"
+exclude = ["Reports/**", "TestOutput/**", "output/**", ".playwright-cli/**", "**/*.exe", "**/*.heaptimeline"]
+
+[[tool.changelog.sources]]
+name = "app"
+path = "."
+
+[tool.changelog.docs]
+unlisted = "other"
+auto = true
+
+[[tool.changelog.docs.groups]]
+id = "keyboard"
+title = "按鍵檢查工具"
+color = "green"
+order = 10
+paths = ["KeyboardState/**/*.md"]
+
+[[tool.changelog.docs.groups]]
+id = "history"
+title = "開發歷史與流程"
+color = "blue"
+order = 20
+paths = ["Docs/ChangeHistory.md", "Docs/ChangelogWorkflow.md"]

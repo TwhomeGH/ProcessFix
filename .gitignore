@@ -1,0 +1,6 @@
+Reports/
+TestOutput/
+.playwright-cli/*
+*.heaptimeline
+*.exe
+output/playwright/*
