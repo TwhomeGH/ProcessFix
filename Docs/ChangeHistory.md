@@ -2,6 +2,32 @@
 
 以下日期採 Asia/Taipei；這是開發里程碑紀錄，不代表已建立 Git tag 或正式發行版本。
 
+## 2026.10.31 將專案定位為 Windows 診斷工具集並整理 PowerShell 工具
+
+**類型**: 改善 · **檔案**: `README.md`, `Collect-Investigation.ps1`, `Stop-TargetConnection.ps1`, `Scripts/TcpNative.cs`, `Tests/Test-Scripts.ps1`
+
+### 問題 - 個案腳本缺乏可重複使用的入口與說明
+
+原 README 側重單一調查案例；蒐集腳本預設比對個案名稱，斷線腳本則寫死端點、PID 與程序名稱，兩者缺少完整 Get-Help。
+
+### 修改 - 明確區分資訊蒐集與狀態修改
+
+- 主 README 改為 Windows 本機程序、連線、檔案與輸入異常排查工具集總覽，提供各工具入口與執行影響。
+- 兩支腳本補齊中文 Get-Help 的用途、參數、範例、輸出與限制，以 UTF-8 BOM 支援 Windows PowerShell 5.1。
+- 蒐集工具移除預設個案目錄與名稱比對，新增選填 IncludePathPattern，並將線索與上限寫入 manifest；保留舊案例的顯式參數範例。
+- 斷線工具要求完整 IPv4 端點、PID 與預期程序名稱，支援 WhatIf / Confirm；確認後重新核對程序及連線建立時間，操作紀錄使用唯一檔名。
+- 將原生 TCP helper 獨立為 Scripts/TcpNative.cs；未確認前不載入、不寫報告，也不呼叫斷線 API。
+- PowerShell 7 離線測試通過：Get-Help、檔案篩選與雜湊、正規表示式驗證、WhatIf、目標不符、程序／連線替換、查詢與 API 失敗及回傳結果。
+- Windows PowerShell 5.1 語法、中文 Get-Help 與原生 helper 編譯通過；完整腳本執行被本機執行原則阻擋，未改變執行原則。未執行真實斷線端到端測試。
+
+**相關文件**:
+
+- [資訊蒐集](Investigation.md)
+- [指定連線處理](Connections.md)
+- [測試說明](../Tests/README.md)
+
+---
+
 ## 2026.10.30 整理原始碼提交與本機 EXE 建置流程
 
 **類型**: 開發流程 · **檔案**: `README.md`, `KeyboardState/README.md`, `.gitignore`, `Docs/ChangelogWorkflow.md`

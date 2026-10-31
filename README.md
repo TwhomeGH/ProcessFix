@@ -1,53 +1,64 @@
-# ProcessFix 調查工具
+# ProcessFix — Windows 本機診斷與異常排查工具集
 
-開發歷史：雙擊 `change_log.cmd` 開啟本機 Changelogkit，或直接閱讀 [變更歷史](Docs/ChangeHistory.md) 與 [紀錄流程](Docs/ChangelogWorkflow.md)。
+整理 Windows 電腦端的程序、連線、檔案與輸入狀態檢查工具，協助先觀察異常，再依明確目標採取處理。專案從實際排查案例出發，後續逐步補充可重複使用的工具與說明。
 
-按鍵工具採原始碼交付，EXE 不納入 Git。在專案根目錄執行：
+目前不是自動修復套件或防毒軟體；各工具的用途、是否改變狀態及限制分開說明。
+
+## 目前工具
+
+| 工具 | 用途 | 執行影響 |
+| --- | --- | --- |
+| [Collect-Investigation.ps1](Collect-Investigation.ps1) | 盤點檔案，蒐集程序、TCP、Defender、啟動項、服務與排程 | 讀取資訊並寫入報告，不主動修復 |
+| [Stop-TargetConnection.ps1](Stop-TargetConnection.ps1) | 核對端點與程序後關閉指定 IPv4 TCP 連線 | 確認後會中斷連線，支援 `-WhatIf` |
+| [KeyboardState](KeyboardState/README.md) | 查看按住狀態、辨識疑似卡鍵並手動補送釋放 | 按下釋放按鈕才送出 key-up |
+
+## 查看 PowerShell 用法
+
+支援 Windows PowerShell 5.1 與 PowerShell 7。在專案根目錄執行：
+
+```powershell
+Get-Help .\Collect-Investigation.ps1 -Full
+Get-Help .\Collect-Investigation.ps1 -Examples
+Get-Help .\Stop-TargetConnection.ps1 -Full
+Get-Help .\Stop-TargetConnection.ps1 -Examples
+Get-Help .\KeyboardState\Build.ps1 -Full
+```
+
+`Get-Help` 只顯示說明，不會執行腳本。工具不會自動更改執行原則或提升權限。
+
+## 資訊蒐集
+
+```powershell
+.\Collect-Investigation.ps1 -Roots 'C:\Temp' -Days 3 -SkipSystem
+```
+
+預設掃描使用者與 Windows Temp，並蒐集系統快照；上述範例只盤點指定目錄。每次輸出獨立報告至 `Reports`。自訂線索可用 `-IncludePathPattern`，預設不套用個案名稱。
+
+[完整說明、輸出與限制](Docs/Investigation.md)
+
+## 指定連線處理
+
+先用 `Get-NetTCPConnection` 與 `Get-Process` 確認目標，再提供完整端點、PID 與程序名稱。先執行 `-WhatIf` 預覽；實際處理預設要求確認，通常需要系統管理員 PowerShell。
+
+[查詢、預覽與操作範例](Docs/Connections.md)
+
+## 按鍵工具建置
 
 ```powershell
 powershell -NoProfile -File .\KeyboardState\Build.ps1
 .\KeyboardState\KeyboardState.exe
 ```
 
-即可查看按鍵狀態並補送釋放事件，詳見 [使用與建置說明](KeyboardState/README.md)。目前不設 CI 自動產出或發布 EXE。
+採原始碼與本機建置腳本交付，EXE 不納入 Git，目前不設 CI 產物發布。修改原始碼後請先關閉工具，再重新建置。
 
-Windows PowerShell 5.1／PowerShell 7 的本機蒐證工具。針對這次 `Fiz_writer_1`、`Peesreack.he` 與 `.qnq` 線索建立檔案清單及 Defender 時間線；不根據前一段對話直接認定樣本功能。
+[按鍵工具使用與建置說明](KeyboardState/README.md)
 
-## 使用
+## 開發與紀錄
 
-在此資料夾開啟 PowerShell：
+雙擊 `change_log.cmd` 使用本機安裝的 Changelogkit；它不是上述診斷工具的執行依賴。
 
-```powershell
-.\Collect-Investigation.ps1
-```
+- [開發歷史](Docs/ChangeHistory.md)
+- [紀錄流程](Docs/ChangelogWorkflow.md)
+- [腳本驗證](Tests/README.md)
 
-預設查看最近 7 天建立或修改的檔案，递迴列出目前使用者 Temp、Windows Temp 和 ProgramData 下的 Fiz_writer_1。名稱符合本案線索的檔案不受日期篩選限制。可指定範圍並選擇計算 SHA-256：
-
-```powershell
-.\Collect-Investigation.ps1 -Days 30 -HashFiles
-```
-
-每次執行產生獨立 `Reports` 子目錄。預設不讀取樣本內容；`-HashFiles` 會讀取最多 64 MB 的檔案以計算雜湊，可用 `-MaxHashMB` 調整。不執行、刪除、隔離或上傳樣本，也不變更防護設定。讀取仍可能觸發防毒反應或影響存取時間，這是即時系統蒐證而非鑑識磁碟映像。
-
-一般權限即可開始；讀不到的資料會記在 `issues.json`。若需補齊受限紀錄，可自行以系統管理員開啟 PowerShell 重跑。工具不會自動提升權限或變更執行原則。
-
-## 輸出
-
-- `manifest.json`：蒐集時間、時區、範圍與工具雜湊。
-- `files.json`：路徑、大小、建立／修改 UTC 時間、待查原因與可選雜湊。
-- `timeline.json`：檔案時間與 Defender 事件，依 UTC 排序。
-- `defender-*.json`：Defender 狀態、偵測清單及事件 XML。
-- `processes.json`、`tcp.json`：執行中程序與 TCP 連線快照。
-- `startup.json`、`services.json`、`tasks.json`：啟動項目、服務與排程工作。
-- `coverage.json`、`issues.json`：蒐集狀態、無法存取項目及上限提示。
-- `report-hashes.json`：輸出檔案的 SHA-256，不包含自身；用於後續檢查檔案是否改變，不提供可信時間戳或簽章。
-
-報告保留原始字串於 JSON，避免可疑內容作為 HTML 或試算表公式執行。報告可能含私人路徑、命令列及 IP，分享前請確認內容。
-
-## 解讀限制
-
-副檔名、名稱與時間接近僅是調查線索。檔案時間可能被修改，不能單獨證明執行、下載來源或感染先後。Defender 偵測清單保留其原始時間表示；統一 UTC 的事件時間線來自事件記錄。程序與連線只代表蒐集當下。找不到紀錄不代表沒有感染，也不能直接判定挖礦、竊密或遠控。
-
-不追蹤 reparse points（連結／接合點）。預設最多檢視 100,000 個目錄項目與 10,000 筆 Defender 事件；达到上限會留下提示。檔案清單只包含符合條件的檔案，不包含空目錄或已刪除檔案。不蒐集瀏覽器密碼、Cookie 或其他憑證內容。
-
-可用 `-Roots <路徑陣列> -SkipSystem` 僅調查指定資料夾。此選項也用於隔離的測試資料驗證。
+Git 提交訊息使用中文。報告、測試產物、記憶體分析檔與 EXE 不納入版本控制。
