@@ -2,6 +2,26 @@
 
 以下日期採 Asia/Taipei；這是開發里程碑紀錄，不代表已建立 Git tag 或正式發行版本。
 
+## 2026.11.11 03:23 新增 SQLite 資料庫壓縮工具
+
+**類型**: 新增 · **檔案**: `Optimize-SqliteDatabase.ps1`, `Scripts/SqliteNative.cs`, `Docs/SqliteMaintenance.md`, `README.md`, `Tests/Test-Scripts.ps1`, `Tests/README.md`
+
+### 問題 - OpenCode 的 opencode.db 成長到 7.95 GiB，實際使用頁只有 2.74 GiB；檔案空間沒有還給作業系統
+
+### 根因 - SQLite 刪除資料只把頁面標成 free page，必須重建資料庫才會縮小。先前的處理腳本依賴 Python，且固定 OpenCode 路徑與服務命令，無法重複使用
+
+### 修改 - 新增通用 Optimize-SqliteDatabase.ps1：以 VACUUM INTO 產生副本，驗證 integrity 與指定資料表筆數後才替換，失敗會回滾
+
+- 新增 Scripts/SqliteNative.cs，直接 P/Invoke Windows 內建 winsqlite3.dll，移除 Python 依賴。
+- 補齊 Get-Help、Docs/SqliteMaintenance.md、README 工具表與測試；修正測試在 Windows PowerShell 5.1 解析 JSON 陣列的差異。
+
+**相關文件**:
+
+- [SQLite 資料庫壓縮](SqliteMaintenance.md)
+- [測試說明](../Tests/README.md)
+
+---
+
 ## 2026.10.31 將專案定位為 Windows 診斷工具集並整理 PowerShell 工具
 
 **類型**: 改善 · **檔案**: `README.md`, `Collect-Investigation.ps1`, `Stop-TargetConnection.ps1`, `Scripts/TcpNative.cs`, `Tests/Test-Scripts.ps1`

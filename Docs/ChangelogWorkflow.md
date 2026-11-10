@@ -20,6 +20,8 @@
 
 每筆記錄應包含問題、已確認原因、改動、相關檔案，以及已完成和未完成的驗證。日期使用 Asia/Taipei；若工具執行主機的日期不同，新增時明確提供 `--date YYYY.MM.DD --time HH:MM`。
 
+`--problem`、`--cause`、`--change` 的首行會直接成為標題，結尾不要加句號或其他標點（markdownlint MD026）；詳細說明放在後續段落或 `--change-detail`。
+
 ## 與 Git 的關係
 
 ProcessFix 已建立 Git 儲存庫。Changelogkit 紀錄與 Git 提交分開維護；啟動入口不會自動 commit、tag 或發布網站。提交訊息使用中文。EXE 與調查輸出由 `.gitignore` 排除；按鍵工具由 `KeyboardState/Build.ps1` 在本機建置。

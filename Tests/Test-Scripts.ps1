@@ -20,18 +20,36 @@ $testRoot = Join-Path $projectRoot ('TestOutput\scripts-' + [guid]::NewGuid().To
 $null = New-Item -ItemType Directory -Path $testRoot
 $collectScript = Join-Path $projectRoot 'Collect-Investigation.ps1'
 $stopScript = Join-Path $projectRoot 'Stop-TargetConnection.ps1'
+$optimizeScript = Join-Path $projectRoot 'Optimize-SqliteDatabase.ps1'
 
 function Assert-True($condition, $message) {
     if (-not $condition) { throw "FAIL: $message" }
 }
 
-foreach ($path in @($collectScript, $stopScript)) {
+<#
+    讀取 JSON 陣列。Windows PowerShell 5.1 的 ConvertFrom-Json 會把整個陣列當成
+    單一管線物件，@() 會算成 1 筆；先取值再展開才能讓兩個版本一致。
+#>
+function Read-JsonArray {
+    param([string]$Path)
+    $value = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    if ($null -eq $value) { return @() }
+    return @($value)
+}
+
+$helpChecks = @(
+    @{ Path = $collectScript; Synopsis = 'Windows' },
+    @{ Path = $stopScript; Synopsis = 'IPv4' },
+    @{ Path = $optimizeScript; Synopsis = 'SQLite' }
+)
+foreach ($entry in $helpChecks) {
+    $path = $entry.Path
     $tokens = $null
     $parseErrors = $null
     $null = [Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$parseErrors)
     Assert-True ($parseErrors.Count -eq 0) "Syntax: $path"
     $help = Get-Help $path -Full
-    Assert-True ($help.Synopsis -match 'Windows|IPv4') "Synopsis: $path"
+    Assert-True ($help.Synopsis -match $entry.Synopsis) "Synopsis: $path"
     Assert-True (@($help.examples.example).Count -ge 3) "Examples: $path"
     $command = Get-Command $path
     foreach ($parameter in $command.Parameters.Values) {
@@ -42,6 +60,54 @@ foreach ($path in @($collectScript, $stopScript)) {
         Assert-True ($documented.Count -eq 1 -and $documented[0].description) "Parameter help: $($parameter.Name)"
     }
 }
+
+# SQLite 壓縮測試使用真實的臨時資料庫；必須在 Get-Process 替身定義前執行。
+$sqliteHelper = Join-Path $projectRoot 'Scripts\SqliteNative.cs'
+if ('ProcessFix.Sqlite.SqliteNative' -as [type]) {
+    throw 'Run tests in a fresh PowerShell process; SQLite helper already loaded.'
+}
+Add-Type -Path $sqliteHelper
+$sqlite = [ProcessFix.Sqlite.SqliteNative]
+$sqliteRoot = Join-Path $testRoot 'sqlite'
+$null = New-Item -ItemType Directory -Path $sqliteRoot
+$sqliteDb = Join-Path $sqliteRoot 'items.db'
+$null = $sqlite::Execute($sqliteDb, 'CREATE TABLE items(id INTEGER PRIMARY KEY, payload TEXT);')
+$null = $sqlite::Execute($sqliteDb, 'WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x < 4000) INSERT INTO items(payload) SELECT hex(randomblob(120)) FROM c;')
+$null = $sqlite::Execute($sqliteDb, 'DELETE FROM items WHERE id % 20 <> 0;')
+
+$sqliteCount = [int64]($sqlite::Query($sqliteDb, 'SELECT count(*) FROM items')[0][0])
+$sqliteBefore = (Get-Item -LiteralPath $sqliteDb).Length
+$sqliteHash = (Get-FileHash -LiteralPath $sqliteDb).Hash
+
+$check = & $optimizeScript -DatabasePath $sqliteDb -CheckOnly
+Assert-True ($check.Status -eq 'Checked') 'SQLite CheckOnly status'
+Assert-True ((Get-FileHash -LiteralPath $sqliteDb).Hash -eq $sqliteHash) 'SQLite CheckOnly must not modify the database'
+
+$sqliteBackup = Join-Path $sqliteRoot 'backup'
+$preview = & $optimizeScript -DatabasePath $sqliteDb -BackupDirectory $sqliteBackup -WhatIf
+Assert-True ($preview.Status -eq 'Checked') 'SQLite WhatIf status'
+Assert-True (-not (Test-Path -LiteralPath $sqliteBackup)) 'SQLite WhatIf must not create the backup directory'
+
+$selfName = (Get-Process -Id $PID).ProcessName
+$blocked = $false
+try { & $optimizeScript -DatabasePath $sqliteDb -BackupDirectory $sqliteBackup -OwnerProcess $selfName } catch { $blocked = $true }
+Assert-True $blocked 'SQLite OwnerProcess guard must abort'
+
+$compacted = & $optimizeScript -DatabasePath $sqliteDb -BackupDirectory $sqliteBackup -VerifyTables items -Confirm:$false
+Assert-True ($compacted.Status -eq 'Compacted') 'SQLite compact status'
+Assert-True ($compacted.VerifyCounts.items -eq $sqliteCount) 'SQLite verify count must match'
+Assert-True ((Get-Item -LiteralPath $sqliteDb).Length -lt $sqliteBefore) 'SQLite file must shrink'
+Assert-True (Test-Path -LiteralPath $compacted.BackupPath) 'SQLite backup must exist'
+Assert-True ([int64]($sqlite::Query($sqliteDb, 'PRAGMA freelist_count')[0][0]) -eq 0) 'SQLite freelist must be zero'
+Assert-True ([string]($sqlite::Query($sqliteDb, 'PRAGMA integrity_check')[0][0]) -eq 'ok') 'SQLite integrity must pass'
+
+$missing = $false
+try { & $optimizeScript -DatabasePath (Join-Path $sqliteRoot 'missing.db') -CheckOnly } catch { $missing = $true }
+Assert-True $missing 'SQLite missing database must fail'
+
+$absent = $false
+try { & $optimizeScript -DatabasePath $sqliteDb -BackupDirectory $sqliteBackup -VerifyTables absent -Confirm:$false } catch { $absent = $true }
+Assert-True $absent 'SQLite unknown verify table must fail'
 
 $fixtures = Join-Path $testRoot 'files with spaces'
 $null = New-Item -ItemType Directory -Path $fixtures
@@ -55,11 +121,11 @@ foreach ($name in @('old.txt','Fiz_writer_1.qnq')) {
 }
 $reports = Join-Path $testRoot 'reports'
 $first = & $collectScript -Roots $fixtures -SkipSystem -OutputRoot $reports -HashFiles
-$files = @(Get-Content -LiteralPath (Join-Path $first 'files.json') -Raw | ConvertFrom-Json)
+$files = @(Read-JsonArray -Path (Join-Path $first 'files.json'))
 Assert-True ($files.Count -eq 1 -and $files[0].Path.EndsWith('recent.txt')) 'Default must not include old case-specific names.'
 Assert-True ($files[0].SHA256 -eq (Get-FileHash -LiteralPath (Join-Path $fixtures 'recent.txt')).Hash) 'File hash must match.'
 $second = & $collectScript -Roots $fixtures -SkipSystem -OutputRoot $reports -IncludePathPattern 'Fiz_writer_1|\.qnq$'
-$files = @(Get-Content -LiteralPath (Join-Path $second 'files.json') -Raw | ConvertFrom-Json)
+$files = @(Read-JsonArray -Path (Join-Path $second 'files.json'))
 Assert-True ($files.Count -eq 2) 'Explicit pattern must include old matching file plus recent file.'
 $manifest = Get-Content -LiteralPath (Join-Path $second 'manifest.json') -Raw | ConvertFrom-Json
 Assert-True ($manifest.IncludePathPattern -eq 'Fiz_writer_1|\.qnq$') 'Manifest must preserve pattern.'
@@ -172,4 +238,4 @@ $ipv6Target.RemoteAddress = '::1'
 try { & $stopScript @ipv6Target -WhatIf }
 catch { $failed = $true }
 Assert-True $failed 'IPv6 must be rejected.'
-Write-Output "PASS: help, collection, pattern/hash, WhatIf, exact matching, identity changes, errors, results. Artifacts: $testRoot"
+Write-Output "PASS: help, collection, pattern/hash, WhatIf, exact matching, identity changes, errors, results, SQLite compaction. Artifacts: $testRoot"

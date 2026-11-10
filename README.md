@@ -11,6 +11,7 @@
 | [Collect-Investigation.ps1](Collect-Investigation.ps1) | 盤點檔案，蒐集程序、TCP、Defender、啟動項、服務與排程 | 讀取資訊並寫入報告，不主動修復 |
 | [Stop-TargetConnection.ps1](Stop-TargetConnection.ps1) | 核對端點與程序後關閉指定 IPv4 TCP 連線 | 確認後會中斷連線，支援 `-WhatIf` |
 | [KeyboardState](KeyboardState/README.md) | 查看按住狀態、辨識疑似卡鍵並手動補送釋放 | 按下釋放按鈕才送出 key-up |
+| [Optimize-SqliteDatabase.ps1](Optimize-SqliteDatabase.ps1) | 以 VACUUM INTO 壓縮 SQLite 資料庫，驗證後替換 | 需先停止使用該 DB 的程序；預設確認，支援 `-WhatIf` |
 
 ## 查看 PowerShell 用法
 
@@ -21,6 +22,8 @@ Get-Help .\Collect-Investigation.ps1 -Full
 Get-Help .\Collect-Investigation.ps1 -Examples
 Get-Help .\Stop-TargetConnection.ps1 -Full
 Get-Help .\Stop-TargetConnection.ps1 -Examples
+Get-Help .\Optimize-SqliteDatabase.ps1 -Full
+Get-Help .\Optimize-SqliteDatabase.ps1 -Examples
 Get-Help .\KeyboardState\Build.ps1 -Full
 ```
 
@@ -52,6 +55,19 @@ powershell -NoProfile -File .\KeyboardState\Build.ps1
 採原始碼與本機建置腳本交付，EXE 不納入 Git，目前不設 CI 產物發布。修改原始碼後請先關閉工具，再重新建置。
 
 [按鍵工具使用與建置說明](KeyboardState/README.md)
+
+## SQLite 資料庫壓縮
+
+先用 `-CheckOnly` 確認可回收空間與所需備份空間；實際執行時指定備份目錄，工具會產生壓縮副本、驗證完整性與指定資料表筆數，通過後才替換原始檔。
+
+```powershell
+.\Optimize-SqliteDatabase.ps1 -DatabasePath 'D:\app\data.db' -CheckOnly
+.\Optimize-SqliteDatabase.ps1 -DatabasePath 'D:\app\data.db' -BackupDirectory 'E:\db-backup' -VerifyTables session,message,part
+```
+
+執行前請停止使用該資料庫的程序。支援 `-WhatIf` 預覽；`-OwnerProcess` 可再加一道程序名稱檢查。
+
+[原理、空間估算與 OpenCode 範例](Docs/SqliteMaintenance.md)
 
 ## 開發與紀錄
 
