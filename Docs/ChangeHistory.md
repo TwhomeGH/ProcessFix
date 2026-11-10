@@ -2,6 +2,24 @@
 
 以下日期採 Asia/Taipei；這是開發里程碑紀錄，不代表已建立 Git tag 或正式發行版本。
 
+## 2026.11.11 03:36 補查 Edge 擴充功能來源
+
+**類型**: 調查 · **檔案**: `Docs/Cases/2026-11-08-edge-adblock.md`, `Docs/Cases/README.md`
+
+### 問題 - 案例文件只停在同步是候選來源，沒有後續查證
+
+### 根因 - 擴充功能已移除，載荷不在本機，無法做靜態分析
+
+### 修改 - 查 Edge 歷史：沒有任何商店 detail 頁面或 CRX 下載；移除時間為 2026-11-08 01:26
+
+- Edge Add-ons API 回傳 404，與 2026-04-25 下架一致；同步仍是最可能來源
+
+**相關文件**:
+
+- [Edge 擴充功能來源調查](Cases/2026-11-08-edge-adblock.md)
+
+---
+
 ## 2026.11.11 03:34 整理 Rugmi 與 Edge 案例文件
 
 **類型**: 文件 · **檔案**: `Docs/Cases/README.md`, `Docs/Cases/2026-09-27-rugmi-initial.md`, `Docs/Cases/2026-09-28-edge-7826.md`, `Docs/Cases/2026-11-08-edge-adblock.md`, `README.md`
