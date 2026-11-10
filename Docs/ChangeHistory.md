@@ -2,6 +2,28 @@
 
 以下日期採 Asia/Taipei；這是開發里程碑紀錄，不代表已建立 Git tag 或正式發行版本。
 
+## 2026.11.11 03:34 整理 Rugmi 與 Edge 案例文件
+
+**類型**: 文件 · **檔案**: `Docs/Cases/README.md`, `Docs/Cases/2026-09-27-rugmi-initial.md`, `Docs/Cases/2026-09-28-edge-7826.md`, `Docs/Cases/2026-11-08-edge-adblock.md`, `README.md`
+
+### 問題 - 兩個調查文件散落在 Docs 根目錄且未進版本控制，其中 Edge 調查還有一個無法由存檔支持的 IP
+
+### 根因 - 文件是從個案直接產出，沒有案例索引與狀態欄位；部分引用指向未納入版控的 Reports
+
+### 修改 - 新增 Docs/Cases 索引與三份案例：Rugmi 初步調查、Edge 7826、Edge 擴充功能來源
+
+- 修正 Edge 調查：8.218.18.153 未出現在任何已保存報告，改標為未驗證觀察；補上 PID 20968 與 connection-stop 紀錄
+- 更新 Rugmi 調查的 5.1 驗證狀態；README 新增案例紀錄入口
+
+**相關文件**:
+
+- [案例索引](Cases/README.md)
+- [Rugmi 事件初步調查](Cases/2026-09-27-rugmi-initial.md)
+- [Edge 7826 連線調查](Cases/2026-09-28-edge-7826.md)
+- [Edge 擴充功能來源調查](Cases/2026-11-08-edge-adblock.md)
+
+---
+
 ## 2026.11.11 03:23 新增 SQLite 資料庫壓縮工具
 
 **類型**: 新增 · **檔案**: `Optimize-SqliteDatabase.ps1`, `Scripts/SqliteNative.cs`, `Docs/SqliteMaintenance.md`, `README.md`, `Tests/Test-Scripts.ps1`, `Tests/README.md`

@@ -69,6 +69,14 @@ powershell -NoProfile -File .\KeyboardState\Build.ps1
 
 [原理、空間估算與 OpenCode 範例](Docs/SqliteMaintenance.md)
 
+## 案例紀錄
+
+從實際案例整理的調查紀錄，與工具分開：[案例索引](Docs/Cases/README.md)
+
+- [Rugmi 事件初步調查（2026-09-27）](Docs/Cases/2026-09-27-rugmi-initial.md)
+- [Edge 7826 連線調查（2026-09-28）](Docs/Cases/2026-09-28-edge-7826.md)
+- [Edge 擴充功能來源調查（2026-11-08）](Docs/Cases/2026-11-08-edge-adblock.md)
+
 ## 開發與紀錄
 
 雙擊 `change_log.cmd` 使用本機安裝的 Changelogkit；它不是上述診斷工具的執行依賴。

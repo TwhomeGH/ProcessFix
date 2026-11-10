@@ -24,3 +24,10 @@ title = "開發歷史與流程"
 color = "blue"
 order = 20
 paths = ["Docs/ChangeHistory.md", "Docs/ChangelogWorkflow.md"]
+
+[[tool.changelog.docs.groups]]
+id = "cases"
+title = "案例紀錄"
+color = "blue"
+order = 30
+paths = ["Docs/Cases/**/*.md"]
